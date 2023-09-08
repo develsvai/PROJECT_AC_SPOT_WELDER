@@ -1,0 +1,6 @@
+ic-pakage DIL04(version1) pc814
+ic-pakage DIL06(version1) MOC3021
+resistor  0204/7 (1/4w) 
+resistor  0617/17 (2w) 
+resistor  E5-8,5 (CPOL-EU) 470UF
+rcl  C150-064x183 C-EU    104K

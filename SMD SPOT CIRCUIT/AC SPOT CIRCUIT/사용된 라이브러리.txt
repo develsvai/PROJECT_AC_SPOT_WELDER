@@ -1,0 +1,8 @@
+ic-pakage DIL04(version1) pc814
+ic-pakage DIL06(version1) MOC3021
+resistor  0204/7 (1/4w) 
+resistor  0617/17 (2w) 
+rcl  C150-064x183 C-EU    104K
+rcl  C025 - 024x044 C-EU  20PF
+atmel DIL40 MEGA32-P
+crystal HC49UP 
