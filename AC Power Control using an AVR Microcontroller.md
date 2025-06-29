@@ -163,6 +163,8 @@ int main(void)
 
 ### **5. Circuit Diagram**
 
+![스크린샷 2025-06-28 오후 1 33 23](https://github.com/user-attachments/assets/626bdb3c-4778-49a1-b5d3-0abcf2d53e6c)
+
 
 ---
 
