@@ -1,4 +1,3 @@
-
 ## 1. 재설계 목표
 
 기존 코드의 문제는 대체로 아래와 같습니다.
@@ -261,18 +260,17 @@ typedef enum {
 ```c
 typedef struct {
     int8_t encoder_delta;
-    bool enc_press;
-    bool manual_press;
+    bool enc_pressed;
+    bool manual_pressed;
 } InputEvent;
 ```
+
+입력 스캐너는 하드웨어 포트 상태를 읽고, 이를 UI/Process가 이해할 수 있는 이벤트로 바꿉니다.
 
 ### 입력 처리 단계
 
 ```text
 [RAW PIN READ]
-    |
-    v
-[DEBOUNCE]
     |
     v
 [EDGE DETECT]
@@ -281,34 +279,147 @@ typedef struct {
 [EVENT GENERATE]
 ```
 
-즉:
+즉 입력층은 아래 역할을 담당합니다.
 
 - 핀 읽기
-- 디바운스
 - 엔코더 방향 판별
-- 버튼 이벤트 생성
-- UI / Process에 전달
+- 버튼 에지 감지
+- `InputEvent` 생성
+- UI / Process 에 이벤트 전달
+
+현재 구현은 `input.c` 에서 이 역할을 수행합니다. 하드웨어 디바운스가 더 필요하면
+이 계층에서 확장하는 것이 가장 자연스럽습니다.
 
 ---
 
-## 7. 렌더링 분리
+## 7. 구현 코드 구조
 
-기존 코드는 상태 로직 안에서 LCD를 직접 갱신하고 있었지만, 새 구조에서는 렌더링을 별도 단계로 분리합니다.
+현재 구현은 `firmware/new_architecture/project/ACSpotWelderNewArch/` 기준으로 아래처럼 구성됩니다.
 
-### 권장 구조
-
-```c
-void input_task(void);
-void ui_task(void);
-void process_task(void);
-void render_task(void);
+```text
+project/
+└── ACSpotWelderNewArch/
+    ├── main.c
+    ├── app.c / app.h
+    ├── app_config.h
+    ├── types.h
+    ├── hardware.c / hardware.h
+    ├── input.c / input.h
+    ├── ui.c / ui.h
+    ├── process.c / process.h
+    ├── auto_detect.c / auto_detect.h
+    ├── render.c / render.h
+    ├── settings.c / settings.h
+    └── lcd_i2c.h
 ```
+
+### 파일별 역할
+
+- `main.c`
+  - 펌웨어 진입점
+  - `app_init()` 호출 후 `app_run()` 반복
+
+- `app.c`, `app.h`
+  - 전체 앱 루프와 모듈 연결
+  - 하드웨어 이벤트 소비, UI FSM, Process FSM, Render 연결
+
+- `app_config.h`
+  - splash, lockout, beep, auto detect threshold 같은 상수 정의
+
+- `types.h`
+  - enum / context / settings 구조를 한 곳에 모은 공용 정의 파일
+
+- `hardware.c`, `hardware.h`
+  - AVR 실제 하드웨어 접근층
+  - tick, zero-cross, ADC, 입력 포트, TRIAC, buzzer, sense 담당
+
+- `input.c`, `input.h`
+  - 포트 입력을 `InputEvent` 로 변환
+  - encoder/manual switch edge 감지 담당
+
+- `ui.c`, `ui.h`
+  - UI FSM 전담
+  - 메뉴 이동, 편집, timeout, 저장 요청 담당
+
+- `process.c`, `process.h`
+  - 용접 프로세스 FSM 전담
+  - WAIT_ZC / PULSE / REST / LOCKOUT 같은 실제 시퀀스 담당
+
+- `auto_detect.c`, `auto_detect.h`
+  - 반주기 동기 자동 감지
+  - ADC 샘플 누적, baseline 관리, trigger request 생성
+
+- `render.c`, `render.h`
+  - LCD 문자열 생성과 갱신
+
+- `settings.c`, `settings.h`
+  - EEPROM 설정 로드/저장
+
+- `lcd_i2c.h`
+  - LCD 드라이버 추상화 헤더
+
+---
+
+## 8. 실행 흐름
+
+실제 루프는 아래 흐름으로 이해하면 됩니다.
+
+```text
+main.c
+  -> app_init()
+  -> app_run() 반복
+
+app_run()
+  -> hardware 이벤트 처리
+  -> input_update()
+  -> ui_tick()
+  -> process_tick_1ms()
+  -> auto detect와 process 연결
+  -> render_tick()
+```
+
+핵심은 `app.c` 가 루트 컨트롤러가 되어 각 모듈을 순서 있게 호출한다는 점입니다.
+
+---
+
+## 9. 상태머신 관계
+
+세 모듈의 관계는 아래처럼 볼 수 있습니다.
+
+```text
+Input -> UI FSM -> Settings
+Input/ADC -> Auto Detect -> Process FSM
+Settings -> Process FSM
+UI + Process + Settings -> Render
+```
+
+정리하면:
+
+- UI FSM은 화면과 설정을 담당
+- Process FSM은 실제 용접 단계를 담당
+- Auto Detect는 AUTO 모드에서 Process FSM을 트리거
+- Render는 현재 상태를 LCD로 표현
+
+---
+
+## 10. 레거시와의 차이
+
+- 레거시는 UI/입력/용접/출력이 더 많이 섞여 있음
+- new_architecture는 상태머신과 레이어로 분리됨
+- 동일 코어를 시뮬레이터와 웹 UI에서 재사용 가능함
+
+---
+
+## 11. 렌더링 분리
+
+기존 코드는 상태 로직 안에서 LCD를 직접 갱신하는 흐름이 강했지만, 새 구조에서는
+렌더링을 별도 단계로 분리합니다.
 
 ### 렌더링 원칙
 
-- `ui_task()`는 상태만 변경
-- `process_task()`는 동작 상태만 변경
-- `render_task()`가 최종 화면 문자열을 생성
+- `ui.c` 는 화면 상태만 관리
+- `process.c` 는 동작 상태만 관리
+- `render.c` 가 현재 상태를 바탕으로 LCD 문자열을 생성
 
 ### 화면 예시
 
@@ -336,28 +447,29 @@ SET TIME
 Welding:
 
 ```text
-T:019 M:01 R:200
-AUTO WELD
+T:050 M:01 R:200
+WELDING
 ```
 
 ---
 
-## 8. 자동 감지 재설계
+## 12. 자동 감지 구조
 
-이 부분이 기존 코드와 가장 크게 달라지는 부분입니다.
+자동 감지는 기존 구조와 가장 다르게 바뀌는 부분입니다.
 
-목표는:
+목표는 아래와 같습니다.
 
-> AC 1차측 ADC 신호만으로 2차측 접촉(니켈 접촉)을 최대한 안정적으로 검출하고, 오검출 없이 자동 스팟을 거는 것
+> AC 1차측 ADC 신호만으로 2차측 접촉을 최대한 안정적으로 검출하고,
+> 오검출 없이 자동 스팟을 거는 것
 
-### 조건
+### 설계 조건
 
 - AVR급 MCU에서 동작 가능해야 함
 - zero-cross 사용 가능
-- 하드웨어 필터 거의 없다고 가정
+- 하드웨어 필터가 거의 없다고 가정
 - AC 노이즈가 심함
-- 무거운 연산은 피함
-- `delay()` 없이 상태 기반으로 동작
+- 무거운 연산은 피해야 함
+- `delay()` 없이 상태 기반으로 동작해야 함
 
 ### 핵심 아이디어
 
@@ -368,7 +480,7 @@ AUTO WELD
 5. 최근 반주기 feature의 baseline 유지
 6. 현재 feature가 baseline 대비 충분히 커지면 접촉 후보
 7. 연속 N회 유지되면 접촉 확정
-8. 용접 후 일정 시간 lockout
+8. 용접 후 lockout으로 재트리거 방지
 
 ### 추천 feature
 
@@ -401,75 +513,16 @@ feature > baseline_feature + 4
 ```text
 AUTO_IDLE
 AUTO_CANDIDATE
-AUTO_TRIGGERED
 AUTO_LOCKOUT
 ```
 
-실제 구현에서는 `PROC_AUTO_MONITOR` 내부 모듈로 넣거나, 독립 모듈로 분리할 수 있습니다.
+현재 구현도 이 기본 구조를 따릅니다.
 
 ---
 
-## 9. 코드 구조 기준안
+## 13. 메인 루프 기준
 
-새 구조의 핵심 컨텍스트는 대략 다음과 같습니다.
-
-### Settings
-
-```c
-typedef struct {
-    uint16_t time_ms;
-    uint8_t  multiplier;
-    uint16_t rest_ms;
-    WeldMode mode;
-} Settings;
-```
-
-### UI Context
-
-```c
-typedef struct {
-    UiState state;
-    MenuItem selected_item;
-    int16_t edit_value;
-    uint16_t timeout_ms;
-    uint16_t splash_ms;
-    bool dirty;
-} UiContext;
-```
-
-### Process Context
-
-```c
-typedef struct {
-    ProcessState state;
-    uint8_t pulses_remaining;
-    uint16_t pulse_timer_ms;
-    uint16_t rest_timer_ms;
-    uint16_t lockout_timer_ms;
-    uint16_t beep_timer_ms;
-    bool manual_request;
-    bool auto_request;
-    bool trigger_latched;
-    bool busy;
-    bool dirty;
-} ProcessContext;
-```
-
-### Input Event
-
-```c
-typedef struct {
-    int8_t encoder_delta;
-    bool enc_pressed;
-    bool manual_pressed;
-} InputEvent;
-```
-
----
-
-## 10. 메인 루프 기준
-
-최종적으로 권장하는 메인 루프는 아래 구조입니다.
+권장하는 메인 루프 개념은 아래와 같습니다.
 
 ```c
 while (1) {
@@ -484,7 +537,9 @@ while (1) {
 }
 ```
 
-이 구조의 장점은 명확합니다.
+실제 구현은 `app.c` 안에서 이 개념을 `app_run()` 형태로 정리해 둔 구조입니다.
+
+장점은 아래와 같습니다.
 
 - 모든 로직이 짧게 실행되고 즉시 복귀
 - 중첩 `while(1)` 제거
@@ -493,55 +548,7 @@ while (1) {
 
 ---
 
-## 11. 현재 `code.md` 구현 수준
+## 14. 함께 보면 좋은 문서
 
-`code.md`는 실제 구조 예시 코드로서 가치가 큽니다.
-
-현재 포함된 핵심 요소:
-
-- `ATmega16`, `16MHz`
-- `INT0` zero-cross 인터럽트
-- `Timer1` 1ms tick
-- EEPROM 설정 로드
-- 입력 스캔
-- UI FSM 기본 구조
-- Process FSM 기본 구조
-- TRIAC / Buzzer / Sense 제어 함수
-
-다만 현재 기준으로는 아직 완성품 코드는 아닙니다.
-
-대표적으로:
-
-- `PROC_AUTO_MONITOR`는 아직 stub 상태
-- 렌더링 최적화 구조는 단순화되어 있음
-- 설정값 범위 제한 / 저장 타이밍 / debounce는 보강 필요
-- 자동 감지 핵심은 `impedence detected 재작성 .md` 쪽 설계를 결합해야 완성됨
-
-즉 `code.md`는 "바로 제품에 넣는 최종본"이라기보다:
-
-> 구조를 실제 코드로 옮겨보기 위한 레퍼런스 구현
-
-으로 보는 것이 정확합니다.
-
----
-
-## 12. 기존 구조와 새 구조 비교
-
-### 기존
-
-- 함수 중첩 구조
-- `delay()` 중심 타이밍
-- 메뉴별 중복 함수
-- ADC 자동 감지 blocking
-- UI / 용접 / 센서 / 출력 혼재
-
-### 새 구조
-
-- FSM 기반
-- 입력 / UI / Process / Render 분리
-- 타이머 기반 논블로킹
-- 공통 메뉴 편집 구조
-- zero-cross 동기 자동 감지
-- baseline + feature + 연속 검출 + lockout
-
----
+- `docs/project_overview.md`
+- `firmware/new_architecture/SIMULATION.md`

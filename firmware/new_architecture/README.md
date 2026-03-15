@@ -14,8 +14,8 @@
 
 ## 문서
 
-- `ARCHITECTURE.md`
-  - 실제 펌웨어 구조와 파일 책임 정리
+- `docs/new_architecture/new_architecture.md`
+  - 설계 기준과 실제 펌웨어 구조 설명
 - `SIMULATION.md`
   - 시뮬레이터와 Web UI 연결 구조 정리
 
