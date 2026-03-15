@@ -229,6 +229,6 @@ sim_ui/
 
 ## 함께 보면 좋은 문서
 
-- `firmware/new_architecture/ARCHITECTURE.md`
 - `firmware/new_architecture/README.md`
 - `docs/new_architecture/new_architecture.md`
+- `docs/project_overview.md`
