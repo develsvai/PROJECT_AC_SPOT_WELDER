@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AC Spot Welder New Architecture Simulator</title>
+  <style>
+    :root {
+      --bg: #f4ede1;
+      --panel: #fff9ef;
+      --line: #d9ccb7;
+      --ink: #1e1a16;
+      --muted: #70675d;
+      --accent: #b33e2e;
+      --accent-soft: #e7b59b;
+      --lcd-shell: #39423d;
+      --lcd-screen: #a5be73;
+      --lcd-ink: #27311b;
+      --ok: #cd4a35;
+      --off: #8f877d;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Pretendard", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #fff7e7 0, transparent 32%),
+        linear-gradient(180deg, #f9f2e6, #efe3d1);
+    }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 1.25fr 1fr;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 14px 36px rgba(58, 42, 28, 0.08);
+      padding: 22px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    h2 {
+      font-size: 17px;
+      margin-bottom: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .sub {
+      margin-top: 10px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 820px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .time-box {
+      min-width: 130px;
+      text-align: center;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 8px;
+    }
+
+    .big {
+      font-size: 30px;
+      font-weight: 800;
+    }
+
+    .lcd-shell {
+      margin-top: 22px;
+      padding: 26px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, #4b554e, #2b332f);
+    }
+
+    .lcd {
+      min-height: 152px;
+      border-radius: 18px;
+      padding: 26px;
+      border: 6px solid rgba(34, 42, 31, 0.28);
+      background: linear-gradient(180deg, #adc37a, #97ad65);
+      color: var(--lcd-ink);
+      font: 58px/1.25 "Courier New", monospace;
+      letter-spacing: 0.08em;
+      display: grid;
+      align-content: center;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.12);
+    }
+
+    .lcd-line {
+      white-space: pre;
+      min-height: 1.2em;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .settings-grid {
+      margin-top: 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .setting-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(255,255,255,0.72);
+    }
+
+    .setting-card input,
+    .setting-card select {
+      width: 100%;
+      margin-top: 12px;
+      border: 1px solid #ccbba0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font: inherit;
+      background: #fffdf8;
+      color: var(--ink);
+    }
+
+    .setting-value {
+      margin-top: 10px;
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .settings-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .control-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .control-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(255,255,255,0.68);
+      display: grid;
+      gap: 12px;
+    }
+
+    .help {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--ink);
+      color: #fff;
+      transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button.alt { background: #725c4b; }
+    button.soft { background: #c55a3b; }
+    button.ghost { background: #dfd1bd; color: var(--ink); }
+    button.active { background: var(--accent); }
+
+    .status-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .status-box {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      background: rgba(255,255,255,0.76);
+    }
+
+    .status-value {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .pill-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 8px 12px;
+      border: 1px solid #dcc7ad;
+      background: #f0e3d1;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--off);
+    }
+    .dot.on { background: var(--ok); }
+
+    .log {
+      background: #171616;
+      color: #f1ebdf;
+      border-radius: 18px;
+      padding: 14px;
+      font: 13px/1.55 "SFMono-Regular", Consolas, monospace;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .log-line + .log-line { margin-top: 6px; }
+
+    .sidebar {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .progress-phase {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .progress-text {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .state-guide {
+      display: grid;
+      gap: 10px;
+    }
+
+    .state-guide-item {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.7);
+    }
+
+    .state-guide-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .page { grid-template-columns: 1fr; }
+      .settings-grid, .control-grid, .status-grid { grid-template-columns: 1fr; }
+      .lcd { font-size: 44px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="card">
+      <div class="header">
+        <div>
+          <h1>AC Spot Welder Simulator</h1>
+          <p class="sub">이 화면은 단순 목업이 아니라 실제 `new_architecture` C 시뮬레이터 상태를 읽습니다. 버튼을 누르거나 시간을 진행시키면 LCD, UI 상태, Process 상태, Auto Detect 상태가 같이 변해야 정상입니다.</p>
+        </div>
+        <div class="card time-box" style="padding:16px;">
+          <div class="label">Virtual Time</div>
+          <div class="big" id="sim-time">0 ms</div>
+          <div class="help" style="margin-top:8px; font-size:12px;">실제 시간이 아니라 시뮬레이터 내부에서 흐른 가상 시간입니다.</div>
+        </div>
+      </div>
+
+      <div class="lcd-shell">
+        <div class="lcd">
+          <div class="lcd-line" id="lcd-line-0">                </div>
+          <div class="lcd-line" id="lcd-line-1">                </div>
+        </div>
+      </div>
+
+      <div class="grid settings-grid">
+        <div class="setting-card">
+          <div class="label">Time</div>
+          <div class="setting-value" id="setting-time-view">50 ms</div>
+          <input id="setting-time-input" type="number" min="1" max="150" step="1">
+        </div>
+        <div class="setting-card">
+          <div class="label">Multiplier</div>
+          <div class="setting-value" id="setting-mult-view">1</div>
+          <input id="setting-mult-input" type="number" min="1" max="20" step="1">
+        </div>
+        <div class="setting-card">
+          <div class="label">Rest</div>
+          <div class="setting-value" id="setting-rest-view">200 ms</div>
+          <input id="setting-rest-input" type="number" min="0" max="1000" step="1">
+        </div>
+        <div class="setting-card">
+          <div class="label">Mode</div>
+          <div class="setting-value" id="setting-mode-view">MANUAL</div>
+          <select id="setting-mode-input">
+            <option value="0">MANUAL</option>
+            <option value="1">AUTO</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button id="apply-settings">Apply Settings</button>
+        <button class="ghost" id="reload-settings">Reload Visible Values</button>
+      </div>
+    </section>
+
+    <section class="sidebar">
+      <div class="card">
+        <h2>Spot Progress</h2>
+        <div class="progress-phase" id="spot-phase">READY</div>
+        <div class="progress-text" id="spot-phase-text">용접 입력을 기다리는 상태입니다.</div>
+      </div>
+
+      <div class="card">
+        <h2>Live State</h2>
+        <div class="grid status-grid">
+          <div class="status-box">
+            <div class="label">UI State</div>
+            <div class="status-value" id="ui-state"></div>
+          </div>
+          <div class="status-box">
+            <div class="label">Process State</div>
+            <div class="status-value" id="process-state"></div>
+          </div>
+          <div class="status-box">
+            <div class="label">Auto Detect</div>
+            <div class="status-value" id="auto-state"></div>
+          </div>
+          <div class="status-box">
+            <div class="label">Current Menu</div>
+            <div class="status-value" id="menu-item"></div>
+          </div>
+          <div class="status-box">
+            <div class="label">Pulse Count</div>
+            <div class="status-value" id="pulse-count">0</div>
+          </div>
+          <div class="status-box">
+            <div class="label">Weld Count</div>
+            <div class="status-value" id="weld-count">0</div>
+          </div>
+        </div>
+
+        <div class="pill-list">
+          <div class="pill"><span class="dot" id="dot-triac"></span>TRIAC output active</div>
+          <div class="pill"><span class="dot" id="dot-buzzer"></span>Buzzer active</div>
+          <div class="pill"><span class="dot" id="dot-contact"></span>Contact stimulus active</div>
+          <div class="pill"><span class="dot" id="dot-weld"></span>Spot currently firing</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>State Meaning</h2>
+        <div class="state-guide">
+          <div class="state-guide-item">
+            <strong id="ui-meaning-title">UI</strong>
+            <div id="ui-meaning">현재 화면 상태 설명</div>
+          </div>
+          <div class="state-guide-item">
+            <strong id="process-meaning-title">Process</strong>
+            <div id="process-meaning">현재 용접 FSM 설명</div>
+          </div>
+          <div class="state-guide-item">
+            <strong id="auto-meaning-title">Auto Detect</strong>
+            <div id="auto-meaning">현재 자동 감지 상태 설명</div>
+          </div>
+          <div class="state-guide-item">
+            <strong id="menu-meaning-title">Menu</strong>
+            <div id="menu-meaning">현재 선택된 메뉴 항목 설명</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Event Log</h2>
+        <div class="help" style="margin-bottom:10px;">최신 로그가 위에 쌓입니다. 자동 스팟은 보통 `접촉 감지 -> 대기 -> 펄스 출력 -> 완료 -> lockout` 순으로 보면 됩니다.</div>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="card">
+        <h2>Controls</h2>
+        <div class="grid control-grid">
+          <div class="control-card">
+            <div class="label">Manual Weld</div>
+            <div class="help">수동 모드 전용입니다. 이제 시뮬레이터에서는 버튼을 누르면 필요한 시간까지 자동으로 흘려서 결과가 바로 보입니다.</div>
+            <div class="btn-row">
+              <button class="soft" id="manual-press">Manual Weld</button>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <div class="label">Contact Input</div>
+            <div class="help">AUTO 모드에서는 `Touch Pulse`가 가장 직관적입니다. 접촉을 한번 만들고 해제해서 자동 감지와 용접을 한 사이클로 보여줍니다.</div>
+            <div class="btn-row">
+              <button class="ghost" id="contact-toggle">Contact Off</button>
+              <button class="soft" id="touch-pulse">Touch Pulse</button>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <div class="label">Simulation Tools</div>
+            <div class="help">`Warm Up 1s`는 부팅 직후 splash를 넘기고 auto detect baseline을 안정시키는 용도입니다. `Reset`은 초기 상태로 되돌립니다.</div>
+            <div class="btn-row">
+              <button class="alt" id="run-1000">Warm Up 1s</button>
+              <button class="ghost" id="reset-sim">Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const Names = {
+      ui: ["UI_SPLASH", "UI_IDLE", "UI_MENU_MAIN", "UI_MENU_EDIT"],
+      process: ["PROC_READY", "PROC_AUTO_MONITOR", "PROC_WAIT_ZC", "PROC_PULSE_ON", "PROC_REST", "PROC_DONE", "PROC_LOCKOUT"],
+      auto: ["AUTO_IDLE", "AUTO_CANDIDATE", "AUTO_LOCKOUT"],
+      menu: ["TIME", "MULT", "REST", "MODE"]
+    };
+
+    const Meanings = {
+      ui: {
+        UI_SPLASH: "부팅 직후 시작 화면입니다. 이때는 입력보다 초기화가 우선입니다.",
+        UI_IDLE: "기본 대기 화면입니다. 현재 설정값과 용접 상태를 보여줍니다.",
+        UI_MENU_MAIN: "메뉴 항목 선택 상태입니다.",
+        UI_MENU_EDIT: "선택한 메뉴 값을 편집하는 상태입니다."
+      },
+      process: {
+        PROC_READY: "수동 모드에서 용접 입력을 기다리는 상태입니다.",
+        PROC_AUTO_MONITOR: "자동 모드에서 접촉 신호를 감시하는 상태입니다.",
+        PROC_WAIT_ZC: "다음 zero-cross를 기다리는 상태입니다. AC 반주기 시작점에 맞춰 용접합니다.",
+        PROC_PULSE_ON: "실제 용접 펄스를 출력하는 상태입니다. TRIAC가 켜져 있습니다.",
+        PROC_REST: "멀티 펄스 사이의 휴지 시간입니다.",
+        PROC_DONE: "용접 시퀀스가 막 끝난 순간 상태입니다.",
+        PROC_LOCKOUT: "재트리거 방지 시간입니다. 같은 입력으로 연속 용접하지 않게 막습니다."
+      },
+      auto: {
+        AUTO_IDLE: "자동 감지 대기 상태입니다. baseline을 기준으로 접촉을 찾습니다.",
+        AUTO_CANDIDATE: "접촉으로 의심되는 변화가 들어와서 확인 중인 상태입니다.",
+        AUTO_LOCKOUT: "이미 자동 트리거를 발생시켜서 재검출을 막는 상태입니다."
+      },
+      menu: {
+        TIME: "용접 펄스 1회의 길이입니다.",
+        MULT: "한 번의 용접 시퀀스에서 몇 번 펄스를 줄지 정합니다.",
+        REST: "멀티 펄스 사이의 쉬는 시간입니다.",
+        MODE: "수동 용접과 자동 감지 용접을 전환합니다."
+      }
+    };
+
+    let latestState = null;
+    let pollHandle = null;
+    let settingsDirty = false;
+    const logLines = [];
+
+    function settingsInputs() {
+      return [
+        document.getElementById("setting-time-input"),
+        document.getElementById("setting-mult-input"),
+        document.getElementById("setting-rest-input"),
+        document.getElementById("setting-mode-input")
+      ];
+    }
+
+    function isEditingSettings() {
+      return settingsInputs().includes(document.activeElement);
+    }
+
+    function appendLog(message, timeMs) {
+      const prefix = `[${String(timeMs ?? "?").padStart(5, " ")} ms]`;
+      logLines.unshift(`${prefix} ${message}`);
+      while (logLines.length > 120) logLines.pop();
+      document.getElementById("log").innerHTML = logLines
+        .map((line) => `<div class="log-line">${line.replace(/</g, "&lt;")}</div>`)
+        .join("");
+    }
+
+    function syncSettingsInputs(state, force = false) {
+      if (!force && (settingsDirty || isEditingSettings())) {
+        return;
+      }
+
+      document.getElementById("setting-time-input").value = state.settings.time_ms;
+      document.getElementById("setting-mult-input").value = state.settings.multiplier;
+      document.getElementById("setting-rest-input").value = state.settings.rest_ms;
+      document.getElementById("setting-mode-input").value = String(state.settings.mode);
+    }
+
+    function processTransitionMessage(nextState) {
+      switch (Names.process[nextState]) {
+        case "PROC_READY":
+          return "수동 대기 상태로 돌아왔습니다.";
+        case "PROC_AUTO_MONITOR":
+          return "자동 감시 상태입니다. 접촉을 기다립니다.";
+        case "PROC_WAIT_ZC":
+          return "용접 요청이 들어왔고, 다음 zero-cross를 기다립니다.";
+        case "PROC_PULSE_ON":
+          return "TRIAC 용접 펄스를 출력 중입니다.";
+        case "PROC_REST":
+          return "멀티 펄스 사이 휴지 시간입니다.";
+        case "PROC_DONE":
+          return "용접 시퀀스가 완료되었습니다.";
+        case "PROC_LOCKOUT":
+          return "재트리거 방지 lockout 시간입니다.";
+        default:
+          return `Process changed to ${Names.process[nextState]}`;
+      }
+    }
+
+    function updateSpotProgress(state) {
+      const phaseEl = document.getElementById("spot-phase");
+      const textEl = document.getElementById("spot-phase-text");
+      let phase = "READY";
+      let text = "용접 입력을 기다리는 상태입니다.";
+
+      switch (Names.process[state.process_state]) {
+        case "PROC_AUTO_MONITOR":
+          phase = "AUTO MONITOR";
+          text = "자동 감지기가 접촉 신호를 감시하고 있습니다.";
+          break;
+        case "PROC_WAIT_ZC":
+          phase = "WAIT ZERO-CROSS";
+          text = "용접 요청을 받았고 AC 반주기 시작점을 기다리는 중입니다.";
+          break;
+        case "PROC_PULSE_ON":
+          phase = "WELDING";
+          text = "실제 용접 펄스를 출력 중입니다. 이때 Pulse Count가 증가합니다.";
+          break;
+        case "PROC_REST":
+          phase = "REST";
+          text = "멀티 펄스 사이의 휴지 구간입니다.";
+          break;
+        case "PROC_DONE":
+          phase = "DONE";
+          text = "용접 시퀀스가 막 완료된 상태입니다.";
+          break;
+        case "PROC_LOCKOUT":
+          phase = "LOCKOUT";
+          text = "같은 입력으로 중복 용접되지 않도록 잠시 막고 있습니다.";
+          break;
+        case "PROC_READY":
+        default:
+          phase = state.settings.mode ? "AUTO READY" : "MANUAL READY";
+          text = state.settings.mode
+            ? "자동 감지 준비가 된 기본 대기 상태입니다."
+            : "수동 용접 버튼 입력을 기다리는 상태입니다.";
+          break;
+      }
+
+      phaseEl.textContent = phase;
+      textEl.textContent = text;
+    }
+
+    async function api(path) {
+      const res = await fetch(path, { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      return res.json();
+    }
+
+    function render(state) {
+      const previous = latestState;
+      latestState = state;
+      document.getElementById("lcd-line-0").textContent = (state.lcd_line0 || "").padEnd(16, " ").slice(0, 16);
+      document.getElementById("lcd-line-1").textContent = (state.lcd_line1 || "").padEnd(16, " ").slice(0, 16);
+      document.getElementById("sim-time").textContent = `${state.time_ms} ms`;
+
+      document.getElementById("ui-state").textContent = Names.ui[state.ui_state] || String(state.ui_state);
+      document.getElementById("process-state").textContent = Names.process[state.process_state] || String(state.process_state);
+      document.getElementById("auto-state").textContent = `${Names.auto[state.auto_state] || state.auto_state} (feature ${state.auto_half_feature}, base ${state.auto_baseline_feature})`;
+      document.getElementById("menu-item").textContent = Names.menu[state.menu_item] || String(state.menu_item);
+      document.getElementById("pulse-count").textContent = String(state.pulse_count);
+      document.getElementById("weld-count").textContent = String(state.weld_count);
+
+      document.getElementById("setting-time-view").textContent = `${state.settings.time_ms} ms`;
+      document.getElementById("setting-mult-view").textContent = String(state.settings.multiplier);
+      document.getElementById("setting-rest-view").textContent = `${state.settings.rest_ms} ms`;
+      document.getElementById("setting-mode-view").textContent = state.settings.mode ? "AUTO" : "MANUAL";
+      updateSpotProgress(state);
+      document.getElementById("ui-meaning-title").textContent = Names.ui[state.ui_state] || "UI";
+      document.getElementById("ui-meaning").textContent = Meanings.ui[Names.ui[state.ui_state]] || "";
+      document.getElementById("process-meaning-title").textContent = Names.process[state.process_state] || "Process";
+      document.getElementById("process-meaning").textContent = Meanings.process[Names.process[state.process_state]] || "";
+      document.getElementById("auto-meaning-title").textContent = Names.auto[state.auto_state] || "Auto";
+      document.getElementById("auto-meaning").textContent = Meanings.auto[Names.auto[state.auto_state]] || "";
+      document.getElementById("menu-meaning-title").textContent = Names.menu[state.menu_item] || "Menu";
+      document.getElementById("menu-meaning").textContent = Meanings.menu[Names.menu[state.menu_item]] || "";
+
+      syncSettingsInputs(state);
+
+      document.getElementById("dot-triac").className = `dot ${state.triac_on ? "on" : ""}`;
+      document.getElementById("dot-buzzer").className = `dot ${state.buzzer_on ? "on" : ""}`;
+      document.getElementById("dot-contact").className = `dot ${state.contact_on ? "on" : ""}`;
+      document.getElementById("dot-weld").className = `dot ${state.process_state === 3 ? "on" : ""}`;
+
+      const contactBtn = document.getElementById("contact-toggle");
+      contactBtn.className = state.contact_on ? "active" : "ghost";
+      contactBtn.textContent = state.contact_on ? "Contact On" : "Contact Off";
+
+      if (previous) {
+        if (previous.process_state !== state.process_state) {
+          appendLog(processTransitionMessage(state.process_state), state.time_ms);
+        }
+        if (previous.ui_state !== state.ui_state) {
+          appendLog(`화면 상태 변경: ${Names.ui[previous.ui_state]} -> ${Names.ui[state.ui_state]}`, state.time_ms);
+        }
+        if (previous.auto_state !== state.auto_state) {
+          appendLog(`자동 감지 상태 변경: ${Names.auto[previous.auto_state]} -> ${Names.auto[state.auto_state]}`, state.time_ms);
+        }
+        if (previous.pulse_count !== state.pulse_count) {
+          appendLog(`용접 펄스 출력. Total pulses: ${state.pulse_count}`, state.time_ms);
+        }
+        if (previous.weld_count !== state.weld_count) {
+          appendLog(`용접 시퀀스 완료. Total welds: ${state.weld_count}`, state.time_ms);
+        }
+      }
+    }
+
+    async function refresh() {
+      const state = await api("/api/state");
+      render(state);
+      return state;
+    }
+
+    async function action(name, extraParams = "", logMessage = "") {
+      const separator = extraParams ? "&" : "";
+      const state = await api(`/api/action?name=${encodeURIComponent(name)}${separator}${extraParams}`);
+      render(state);
+      if (logMessage) appendLog(logMessage, state.time_ms);
+      return state;
+    }
+
+    function settingParams() {
+      const time = Math.max(1, Math.min(150, Number(document.getElementById("setting-time-input").value || 50)));
+      const mult = Math.max(1, Math.min(20, Number(document.getElementById("setting-mult-input").value || 1)));
+      const rest = Math.max(0, Math.min(1000, Number(document.getElementById("setting-rest-input").value || 200)));
+      const mode = Number(document.getElementById("setting-mode-input").value || 0) ? 1 : 0;
+      return `time_ms=${time}&multiplier=${mult}&rest_ms=${rest}&mode=${mode}`;
+    }
+
+    async function boot() {
+      try {
+        const state = await refresh();
+        appendLog("Simulator connected", state.time_ms);
+      } catch (error) {
+        appendLog(`Connection failed: ${error.message}`, 0);
+      }
+
+      pollHandle = setInterval(() => {
+        refresh().catch(() => {});
+      }, 250);
+    }
+    document.getElementById("manual-press").addEventListener("click", async () => {
+      const state = await action("manual_press", "", "수동 용접 입력을 넣고, 시뮬레이터가 한 사이클을 끝까지 진행했습니다.");
+      if (state.settings.mode !== 0) {
+        appendLog("현재는 AUTO 모드입니다. Manual Weld는 MANUAL 모드에서만 실제 용접으로 이어집니다.", state.time_ms);
+      }
+    });
+    document.getElementById("run-1000").addEventListener("click", () => action("step", "value=1000", "시뮬레이터 시간을 1초 진행했습니다. splash 해제나 auto baseline 안정화에 유용합니다."));
+    document.getElementById("reset-sim").addEventListener("click", () => action("reset", "", "Simulator reset"));
+    document.getElementById("contact-toggle").addEventListener("click", async () => {
+      const before = latestState?.contact_on;
+      const state = await action("contact_toggle", "", before ? "Contact stimulus disabled" : "Contact stimulus enabled");
+      if (state.settings.mode === 0) {
+        appendLog("Contact stimulus는 ADC feature만 바꿉니다. 실제 자동 용접은 AUTO 모드에서만 의미가 있습니다.", state.time_ms);
+      } else if (!before) {
+        appendLog("AUTO 모드에서는 Contact On 유지보다 Touch Pulse가 더 직관적입니다.", state.time_ms);
+      }
+    });
+    document.getElementById("touch-pulse").addEventListener("click", () => {
+      action("touch_pulse", "contact_ms=300&settle_ms=500", "Touch pulse 실행: 접촉 생성 -> 자동 검출 -> release");
+    });
+    document.getElementById("apply-settings").addEventListener("click", () => {
+      const params = settingParams();
+      settingsDirty = false;
+      action("set_settings", params, "설정값을 시뮬레이터에 직접 적용했습니다.");
+    });
+    document.getElementById("reload-settings").addEventListener("click", () => {
+      document.activeElement?.blur?.();
+      settingsDirty = false;
+      refresh().then((state) => {
+        syncSettingsInputs(state, true);
+        appendLog("현재 시뮬레이터 설정값으로 입력창을 다시 동기화했습니다.", state.time_ms);
+      });
+    });
+
+    settingsInputs().forEach((element) => {
+      element.addEventListener("input", () => {
+        settingsDirty = true;
+      });
+      element.addEventListener("change", () => {
+        settingsDirty = true;
+      });
+    });
+
+    boot();
+  </script>
+</body>
+</html>

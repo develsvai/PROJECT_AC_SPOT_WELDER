@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+._*
+
+# Editors / IDEs
+.idea/
+.vs/
+*.atsuo
+
+# AVR / Atmel build outputs
+Debug/
+Release/
+*.o
+*.d
+*.elf
+*.hex
+*.eep
+*.lss
+*.map
+*.srec
+makedep.mk
+
+# Python
+__pycache__/
+*.pyc
